@@ -125,7 +125,7 @@ class Booth:
         url = f"{self.args.worker_url.rstrip('/')}/s/{session_id}"
         # omitsize keeps the viewBox, so the kiosk's CSS can scale the code without shifting it
         qr_svg = segno.make(url, error="m").svg_inline(border=2, omitsize=True)
-        log(f"photo {session_id} taken ({condition})")
+        log(f"photo {session_id} taken ({condition})  survey: {url}")
         await self.robot.photo_taken()
         return web.json_response({"id": session_id, "url": url, "qr_svg": qr_svg})
 
@@ -138,6 +138,7 @@ class Booth:
         names = "  ".join(f"{i}={n}" for i, n in enumerate(self.condition_names, 1))
         print(f"\nCommands:  {names}\n"
               "           n=simulate person near  f=simulate nobody  r=real tracking\n"
+              "           p=preview the photo face of the current condition\n"
               "           s=status  h=help  q=quit\n", flush=True)
 
     async def on_command(self, cmd):
@@ -154,6 +155,12 @@ class Booth:
         elif cmd == "r":
             self.robot.simulate(None)
             log("using real user tracking")
+        elif cmd == "p":
+            if (self.robot.behaviour.get("pose") or {}).get("face"):
+                log(f"previewing the {self.robot.condition} photo face")
+                self.robot.preview_pose()
+            else:
+                log(f"{self.robot.condition} has no photo face")
         elif cmd == "s":
             log(f"condition={self.robot.condition}  robot={'connected' if self.robot.connected else 'DISCONNECTED'}"
                 f"  near={self.robot.near}  closest={self.robot.closest}  kiosks={len(self.kiosks)}"

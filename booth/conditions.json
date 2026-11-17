@@ -41,11 +41,16 @@
       },
       "pose": {
         "lead_s": 3,
+        "hold_s": 6,
         "lines": [
           "Smile!"
         ],
-        "gesture": "BigSmile",
-        "hold_s": 6
+        "face": {
+          "SMILE_OPEN": 0.8,
+          "SMILE_CLOSED": 0.3,
+          "EYE_SQUINT_LEFT": 0.2,
+          "EYE_SQUINT_RIGHT": 0.2
+        }
       },
       "after": {
         "lines": [
@@ -79,11 +84,15 @@
       },
       "pose": {
         "lead_s": 3,
+        "hold_s": 6,
         "lines": [
           "Big smile!"
         ],
-        "gesture": "BigSmile",
-        "hold_s": 6
+        "face": {
+          "SMILE_OPEN": 1.0,
+          "BROW_UP_LEFT": 0.5,
+          "BROW_UP_RIGHT": 0.5
+        }
       },
       "after": {
         "lines": [
@@ -117,11 +126,17 @@
       },
       "pose": {
         "lead_s": 4,
+        "hold_s": 8,
         "lines": [
           "Silly faces now!"
         ],
-        "gesture": "Surprise",
-        "hold_s": 8
+        "face": {
+          "JAW_OPEN": 0.6,
+          "TONGUE_OUT": 1.0,
+          "BROW_UP_LEFT": 1.0,
+          "EYE_SQUINT_RIGHT": 1.0,
+          "MOUTH_LEFT": 0.5
+        }
       },
       "after": {
         "lines": [

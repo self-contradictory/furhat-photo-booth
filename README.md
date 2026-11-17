@@ -6,6 +6,28 @@ who take a photo scan a QR code, answer a short survey on their phone, and then 
 
 How the parts connect, and which files each team member edits: [docs/INTERFACE.md](docs/INTERFACE.md).
 
+## Quick start for teammates
+
+You can run the whole booth on your own laptop with Virtual Furhat. No Cloudflare account is needed:
+the web part runs locally with a local database.
+
+1. Do sections 1, 2 (*Local development* only) and 3 below.
+2. Edit your part:
+   - **Robot behaviour** → `booth/conditions.json` (lines, gestures, photo face, countdown). Restart the
+     orchestrator to load changes. Use `p` to preview a condition's photo face and `n` to make the robot
+     react as if someone walked up. See [docs/INTERFACE.md](docs/INTERFACE.md) for every field.
+   - **Survey** → `web/src/survey.json`. The local dev server reloads it by itself; open the link from a
+     test photo's QR code (or http://localhost:3000/s/AAAAAAAAAA) to see it.
+3. Commit and push. Publishing survey changes to the live site needs the Cloudflare account, so tell
+   the account owner after you push; they run `npm run deploy`.
+
+Things that are different locally:
+- Virtual Furhat does not use your webcam to find people. Use `n`/`f`, or add a virtual person in the
+  Furhat web interface (http://localhost:8080): double-click the area in front of the robot on the
+  dashboard and drag the person closer or further away (type `r` first if you used `n`/`f`).
+- Your `booth/.env` uses `BOOTH_SECRET=dev-secret`. The production secret is only needed on the
+  deployment laptop and is shared privately, never committed.
+
 | Folder | What it is |
 | --- | --- |
 | `booth/` | Python orchestrator on the MacBook: drives Furhat, serves the kiosk page, uploads photos |
@@ -27,10 +49,21 @@ How the parts connect, and which files each team member edits: [docs/INTERFACE.m
 ## 1. Python setup
 
 ```bash
-conda activate hri                      # Python 3.12; the old `hri27` env is Python 2.7 and will not work
+conda create -n hri python=3.12         # once; skip if you already have a Python 3.12 env
+conda activate hri
 pip install -r booth/requirements.txt pandas pyreadstat
-cp booth/.env.example booth/.env        # then fill in BOOTH_SECRET (same value as the Worker secret)
+cp booth/.env.example booth/.env
 ```
+
+For local testing, set these in `booth/.env`:
+
+```
+WORKER_URL=http://localhost:3000
+BOOTH_SECRET=dev-secret
+FURHAT_HOST=127.0.0.1
+```
+
+On deployment day, switch to `WORKER_URL=https://booth.sagyzdop.com` and the production `BOOTH_SECRET`.
 
 ## 2. Web part (Cloudflare Worker)
 
@@ -40,11 +73,11 @@ Local development:
 cd web
 npm install
 echo "BOOTH_SECRET=dev-secret" > .dev.vars
-npx wrangler d1 migrations apply DB --local
+npx wrangler d1 migrations apply DB --local   # re-run if database_id in wrangler.jsonc ever changes
 npm run dev                             # http://localhost:3000
 ```
 
-First deployment (once):
+First deployment (once, already done for booth.sagyzdop.com, needs the Cloudflare account):
 
 ```bash
 npx wrangler d1 create furhat-photo-booth        # put the printed database_id into wrangler.jsonc
@@ -70,6 +103,9 @@ python orchestrator.py --condition inviting
 ```
 
 3. Open http://localhost:8000 in Chrome and allow camera access. Click **Take a photo** (or press **Space**).
+   The preview and the saved photo are mirrored like a selfie camera. After the 10-second countdown a
+   QR code appears; scanning it opens the survey (with the local dev server, open the printed URL on the
+   same laptop instead, since your phone cannot reach `localhost`).
 
 Terminal commands while it runs (type and press Enter):
 
@@ -77,6 +113,7 @@ Terminal commands while it runs (type and press Enter):
 | --- | --- |
 | `1`–`4` | Switch condition: passive, inviting, complimenting, playful |
 | `n` / `f` / `r` | Simulate a person arriving (press again for a new person) / nobody / back to real user tracking |
+| `p` | Preview the current condition's photo face (held for `hold_s` seconds, no photo taken) |
 | `s` | Status: condition, robot connection, closest person, pending uploads |
 | `q` | Quit |
 

@@ -227,23 +227,42 @@ class Robot:
         if gesture:
             await self._safe(self.client.request_gesture_start(gesture))
 
-    async def _pose_after(self, delay):
+    async def _pose_after(self, delay, speak=True):
+        """Put on the photo face and hold it for hold_s seconds, then release it.
+
+        Gestures animate in and straight back out, so the held face is built from
+        face parameters instead: once set, they stay until they are set back to 0.
+        """
         await asyncio.sleep(delay)
         pose = self.behaviour.get("pose") or {}
         lines = pose.get("lines") or []
+        face = pose.get("face") or {}
+        hold_s = pose.get("hold_s", 6.0)
         if not self.connected:
             return
-        if lines:
+        if lines and speak:
             line = random.choice(lines)
             self.speaking = True
             self.speak_started = time.monotonic()
             await self._safe(self.client.request_speak_text(line, abort=True))
             self.log(f"[pose] {line}")
         if pose.get("gesture"):
-            # Furhat's gesture duration is in seconds: the gesture is stretched over hold_s.
-            self.pose_until = time.monotonic() + pose.get("hold_s", 6.0)
-            await self._safe(self.client.request_gesture_start(pose["gesture"], duration=pose.get("hold_s", 6.0)))
-            self.log(f"[pose] {pose['gesture']} for {pose.get('hold_s', 6.0)} s")
+            await self._safe(self.client.request_gesture_start(pose["gesture"]))
+        if not face:
+            return
+        self.pose_until = time.monotonic() + hold_s
+        await self._safe(self.client.request_face_params(face))
+        self.log(f"[pose] holding face for {hold_s} s: {face}")
+        try:
+            await asyncio.sleep(hold_s)
+        finally:
+            # Also runs when the pose is cancelled (condition switch), so the face never stays stuck.
+            await self._safe(self.client.request_face_params({name: 0.0 for name in face}))
+
+    def preview_pose(self):
+        """Operator command: show the current condition's photo face now, without a photo."""
+        self._cancel_pose()
+        self.pose_task = asyncio.create_task(self._pose_after(0.0, speak=False))
 
     def _cancel_pose(self):
         if self.pose_task and not self.pose_task.done():

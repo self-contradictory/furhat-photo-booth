@@ -41,11 +41,19 @@ Each condition has five **moments**. Every moment is optional; an empty `{}` mea
 | `idle` | Nobody is close, repeated every `every_s` seconds | |
 | `approach` | Once, when a person comes within `approach_distance_m` | Waits for the current line to finish |
 | `photo` | The moment someone presses the button; the countdown (`countdown_s`, 10 s) starts at the same time | Interrupts a line in progress |
-| `pose` | `lead_s` seconds before the shutter | The face for the picture. `gesture` is stretched over `hold_s` seconds, so set `hold_s` longer than `lead_s` to keep the face on through the capture |
+| `pose` | `lead_s` seconds before the shutter | The face for the picture, set with `face` and held for `hold_s` seconds (see below). Keep `hold_s` longer than `lead_s` so the face is still on when the photo is taken |
 | `after` | The photo is taken and the QR code is shown | |
 
 Each moment takes `lines` (one is picked at random) and an optional `gesture`
 (Furhat built-ins such as `Smile`, `BigSmile`, `Nod`, `Wink`, `Surprise`, `Thoughtful`, `BrowRaise`).
+
+**The photo face (`pose.face`).** Gestures always animate in and straight back out, so they cannot
+hold an expression. The pose instead sets Furhat's face parameters directly, e.g.
+`{"SMILE_OPEN": 1.0, "BROW_UP_LEFT": 0.5}` (values 0 to 1), holds them for `hold_s` seconds, then
+sets them back to 0. Names are Furhat's basic and ARKit-style face parameters (`SMILE_OPEN`,
+`SMILE_CLOSED`, `SURPRISE`, `BROW_UP_LEFT`, `BROW_DOWN_RIGHT`, `EYE_SQUINT_LEFT`, `JAW_OPEN`,
+`MOUTH_LEFT`, `TONGUE_OUT`, ...). Furhat silently ignores names it does not know, so check every
+change by eye: run the orchestrator, switch to the condition and type `p` to preview its face.
 
 Per condition: `gaze` (look at the closest person while they are near) and
 `microexpressions` (Furhat's small idle face movements; off for the passive condition).
