@@ -32,6 +32,18 @@
 
 - Furhat invites people to help it learn something about human expressions.
 - Example: “Hey! I’m learning how humans smile. Could you teach me your best smile?”
-- When the person smiles, Furhat imitates their expression.
+- Furhat does not detect or imitate the smile (see the note below).
 - Furhat responds: “Wow! I think I got it! Thank you for teaching me! Let’s take a picture to celebrate!”
 - Goal: Investigate whether helping a robot and experiencing social reciprocity creates stronger positive emotions and a sense of connection.
+
+## Implementation notes
+
+- The robot does not hold a conversation. In every condition it speaks scripted lines at four moments
+  (idle, when a person comes close, when the photo is taken, after the photo). The exact lines and
+  gestures are in `booth/conditions.json`.
+- Participants start the photo themselves by pressing Space on the laptop.
+- Smile imitation in the Social Reciprocity condition was dropped: the robot asks to be taught a smile
+  and thanks the participant, but does not detect or copy their expression. This is a limitation to
+  report.
+- Conditions are switched by hand at the start of each break window, and every photo and survey is
+  tagged with the active condition.

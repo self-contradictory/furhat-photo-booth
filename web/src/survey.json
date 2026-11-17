@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "title": "Your photo with Furhat",
+  "intro": "Answer a few quick questions (about 2 minutes) and your photo will be ready to download. Your answers are anonymous.",
+  "sections": [
+    {
+      "title": "Your mood",
+      "items": [
+        { "id": "mood_before", "type": "scale", "text": "Right before you met Furhat, how was your mood?", "min": 1, "max": 7, "minLabel": "Very bad", "maxLabel": "Very good" },
+        { "id": "mood_after", "type": "scale", "text": "How is your mood right now?", "min": 1, "max": 7, "minLabel": "Very bad", "maxLabel": "Very good" }
+      ]
+    },
+    {
+      "title": "Your impression of Furhat",
+      "description": "Rate Furhat on each scale. Pick the point closest to how you see it.",
+      "items": [
+        { "id": "gs_like1", "type": "scale", "group": "likeability", "min": 1, "max": 5, "minLabel": "Dislike", "maxLabel": "Like" },
+        { "id": "gs_like2", "type": "scale", "group": "likeability", "min": 1, "max": 5, "minLabel": "Unfriendly", "maxLabel": "Friendly" },
+        { "id": "gs_like3", "type": "scale", "group": "likeability", "min": 1, "max": 5, "minLabel": "Unkind", "maxLabel": "Kind" },
+        { "id": "gs_like4", "type": "scale", "group": "likeability", "min": 1, "max": 5, "minLabel": "Unpleasant", "maxLabel": "Pleasant" },
+        { "id": "gs_like5", "type": "scale", "group": "likeability", "min": 1, "max": 5, "minLabel": "Awful", "maxLabel": "Nice" },
+        { "id": "gs_int1", "type": "scale", "group": "intelligence", "min": 1, "max": 5, "minLabel": "Incompetent", "maxLabel": "Competent" },
+        { "id": "gs_int2", "type": "scale", "group": "intelligence", "min": 1, "max": 5, "minLabel": "Ignorant", "maxLabel": "Knowledgeable" },
+        { "id": "gs_int3", "type": "scale", "group": "intelligence", "min": 1, "max": 5, "minLabel": "Irresponsible", "maxLabel": "Responsible" },
+        { "id": "gs_int4", "type": "scale", "group": "intelligence", "min": 1, "max": 5, "minLabel": "Unintelligent", "maxLabel": "Intelligent" },
+        { "id": "gs_int5", "type": "scale", "group": "intelligence", "min": 1, "max": 5, "minLabel": "Foolish", "maxLabel": "Sensible" }
+      ]
+    },
+    {
+      "title": "The interaction",
+      "description": "How much do you agree with each statement?",
+      "items": [
+        { "id": "enj1", "type": "scale", "group": "enjoyment", "text": "I enjoyed taking a photo with Furhat.", "min": 1, "max": 7, "minLabel": "Strongly disagree", "maxLabel": "Strongly agree" },
+        { "id": "enj2", "type": "scale", "group": "enjoyment", "text": "The interaction was fun.", "min": 1, "max": 7, "minLabel": "Strongly disagree", "maxLabel": "Strongly agree" },
+        { "id": "enj3", "type": "scale", "group": "enjoyment", "reverse": true, "text": "The interaction was boring.", "min": 1, "max": 7, "minLabel": "Strongly disagree", "maxLabel": "Strongly agree" },
+        { "id": "con1", "type": "scale", "group": "connection", "text": "I felt a connection with Furhat.", "min": 1, "max": 7, "minLabel": "Strongly disagree", "maxLabel": "Strongly agree" },
+        { "id": "con2", "type": "scale", "group": "connection", "text": "Furhat made me feel welcome.", "min": 1, "max": 7, "minLabel": "Strongly disagree", "maxLabel": "Strongly agree" },
+        { "id": "again", "type": "scale", "text": "I would interact with Furhat again.", "min": 1, "max": 7, "minLabel": "Strongly disagree", "maxLabel": "Strongly agree" },
+        {
+          "id": "approach_reason", "type": "choice", "text": "What made you come to the photo booth?",
+          "options": [
+            { "value": 1, "label": "Furhat talked to me" },
+            { "value": 2, "label": "The sign next to Furhat" },
+            { "value": 3, "label": "I was curious about the robot" },
+            { "value": 4, "label": "My friends went" },
+            { "value": 5, "label": "I wanted a photo" },
+            { "value": 6, "label": "Something else" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "About you",
+      "items": [
+        {
+          "id": "age", "type": "choice", "text": "Your age",
+          "options": [
+            { "value": 1, "label": "17 or younger" },
+            { "value": 2, "label": "18–20" },
+            { "value": 3, "label": "21–23" },
+            { "value": 4, "label": "24–29" },
+            { "value": 5, "label": "30 or older" }
+          ]
+        },
+        {
+          "id": "gender", "type": "choice", "text": "Your gender",
+          "options": [
+            { "value": 1, "label": "Female" },
+            { "value": 2, "label": "Male" },
+            { "value": 3, "label": "Another gender" },
+            { "value": 4, "label": "Prefer not to say" }
+          ]
+        },
+        {
+          "id": "robot_experience", "type": "choice", "text": "Have you interacted with a robot before today?",
+          "options": [
+            { "value": 1, "label": "Never" },
+            { "value": 2, "label": "Once or twice" },
+            { "value": 3, "label": "Several times" },
+            { "value": 4, "label": "Often" }
+          ]
+        },
+        { "id": "comment", "type": "text", "required": false, "text": "Anything else you want to tell us? (optional)", "maxLength": 1000 }
+      ]
+    }
+  ]
+}
