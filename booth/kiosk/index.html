@@ -94,10 +94,22 @@ function showError(text, then) {
 }
 
 async function startCamera() {
+  const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
   try {
-    video.srcObject = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false,
-    });
+    let stream = await navigator.mediaDevices.getUserMedia({ video: size, audio: false });
+    // Skip virtual cameras (e.g. OBS), which may already be flipped or show something else.
+    // Device labels are only readable after camera permission is granted, hence the second step.
+    const label = stream.getVideoTracks()[0].label;
+    if (/virtual|obs/i.test(label)) {
+      const cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+      const real = cams.find((d) => !/virtual|obs/i.test(d.label));
+      if (real) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({ video: { ...size, deviceId: { exact: real.deviceId } }, audio: false });
+      }
+    }
+    video.srcObject = stream;
+    console.log('camera:', stream.getVideoTracks()[0].label);
   } catch (e) {
     showError('Camera not available. Allow camera access for this page and reload.');
   }

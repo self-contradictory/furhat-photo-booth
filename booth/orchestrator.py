@@ -130,7 +130,9 @@ class Booth:
         return web.json_response({"id": session_id, "url": url, "qr_svg": qr_svg})
 
     async def index_handler(self, _request):
-        return web.FileResponse(os.path.join(HERE, "kiosk", "index.html"))
+        # no-store: a plain reload always picks up edits to the kiosk page
+        return web.FileResponse(os.path.join(HERE, "kiosk", "index.html"),
+                                headers={"Cache-Control": "no-store"})
 
     # ---- operator terminal ----------------------------------------------------------
 
