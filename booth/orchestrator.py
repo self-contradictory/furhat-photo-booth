@@ -31,7 +31,6 @@ from uploader import Uploader
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
-COUNTDOWN_S = 3
 ID_ALPHABET = string.ascii_letters + string.digits
 
 
@@ -75,6 +74,7 @@ class Booth:
     def __init__(self, args, conditions):
         self.args = args
         self.condition_names = list(conditions["conditions"])
+        self.countdown_s = conditions.get("countdown_s", 10)
         self.robot = Robot(args.furhat_host, conditions, log)
         self.uploader = Uploader(os.path.join(DATA_DIR, "photos"), args.worker_url, args.secret, log)
         self.kiosks = set()
@@ -101,8 +101,8 @@ class Booth:
         if kind == "photo_requested" and not self.busy:
             self.busy = True
             log("photo requested")
-            await self.broadcast({"type": "countdown", "seconds": COUNTDOWN_S})
-            await self.robot.photo_started()
+            await self.broadcast({"type": "countdown", "seconds": self.countdown_s})
+            await self.robot.photo_started(self.countdown_s)
         elif kind == "reset":
             self.busy = False
             self.robot.kiosk_reset()
@@ -123,7 +123,8 @@ class Booth:
         append_csv("photos.csv", {"id": session_id, "condition": condition, "captured_at": captured_at})
 
         url = f"{self.args.worker_url.rstrip('/')}/s/{session_id}"
-        qr_svg = segno.make(url, error="m").svg_inline(scale=10, border=2)
+        # omitsize keeps the viewBox, so the kiosk's CSS can scale the code without shifting it
+        qr_svg = segno.make(url, error="m").svg_inline(border=2, omitsize=True)
         log(f"photo {session_id} taken ({condition})")
         await self.robot.photo_taken()
         return web.json_response({"id": session_id, "url": url, "qr_svg": qr_svg})
@@ -146,7 +147,7 @@ class Booth:
             append_csv("conditions.csv", {"switched_at": now_iso(), "condition": name})
         elif cmd == "n":
             self.robot.simulate(1.0)
-            log("simulating a person at 1.0 m")
+            log("simulating a person arriving at 1.0 m")
         elif cmd == "f":
             self.robot.simulate(math.inf)
             log("simulating nobody")
@@ -158,7 +159,7 @@ class Booth:
                 f"  near={self.robot.near}  closest={self.robot.closest}  kiosks={len(self.kiosks)}"
                 f"  pending_uploads={len(self.uploader.pending())}")
         elif cmd == "q":
-            raise SystemExit(0)
+            return False
         elif cmd:
             self.print_help()
 
@@ -172,8 +173,8 @@ class Booth:
                 loop.call_soon_threadsafe(lines.put_nowait, line)
 
         threading.Thread(target=reader, daemon=True).start()
-        while True:
-            await self.on_command((await lines.get()).strip().lower())
+        while await self.on_command((await lines.get()).strip().lower()) is not False:
+            pass
 
     # ---- main ------------------------------------------------------------------------------
 
@@ -190,9 +191,13 @@ class Booth:
         append_csv("conditions.csv", {"switched_at": now_iso(), "condition": self.robot.condition})
         log(f"kiosk at http://localhost:{self.args.port}  worker {self.args.worker_url}")
         self.print_help()
+        # Runs until the operator types q; the robot and uploader loops never end on their own.
+        tasks = [asyncio.create_task(t) for t in (self.robot.run(), self.uploader.run(), self.read_terminal())]
         try:
-            await asyncio.gather(self.robot.run(), self.uploader.run(), self.read_terminal())
+            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         finally:
+            for t in tasks:
+                t.cancel()
             await runner.cleanup()
 
 

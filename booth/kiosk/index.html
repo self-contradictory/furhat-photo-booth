@@ -8,20 +8,28 @@
   :root { --bg: #111; --ink: #fff; --soft: #bbb; --accent: #ff7a3d; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
-    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; overflow: hidden; cursor: none; }
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; overflow: hidden; }
   #stage { position: fixed; inset: 0; }
   video, #shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  video { transform: scaleX(-1); } /* mirror the preview like a selfie camera; the saved photo is not mirrored */
   #shot { display: none; }
   .overlay { position: absolute; left: 0; right: 0; text-align: center; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
-  #prompt { bottom: 6vh; font-size: 5vh; font-weight: 700; }
-  #prompt kbd { background: var(--accent); color: #111; border-radius: 1vh; padding: .2em .6em; text-shadow: none; }
+  #prompt { bottom: 4vh; left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 110vh);
+    display: flex; align-items: center; gap: 4vh; padding: 3vh 4vh; border-radius: 3vh;
+    background: rgba(0,0,0,.72); text-shadow: none; text-align: left; }
+  #prompt h1 { font-size: 4.2vh; margin: 0 0 1.2vh; }
+  #prompt ol { margin: 0; padding-left: 1.2em; font-size: 2.6vh; line-height: 1.5; color: var(--soft); }
+  kbd { background: #333; color: var(--ink); border-radius: .6vh; padding: .05em .45em; font-family: inherit; }
+  .btn { flex-shrink: 0; border: 0; border-radius: 2.5vh; background: var(--accent); color: #111;
+    font: inherit; font-size: 4.2vh; font-weight: 800; padding: 3vh 5vh; cursor: pointer; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: scale(.97); }
   #count { top: 50%; transform: translateY(-50%); font-size: 40vh; font-weight: 800; display: none; }
   #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .4s; }
   #qr { position: absolute; inset: 0; display: none; background: var(--bg);
     flex-direction: column; align-items: center; justify-content: center; gap: 3vh; text-align: center; }
-  #qr .code { background: #fff; padding: 2vh; border-radius: 2vh; }
-  #qr .code svg { width: 45vh; height: 45vh; display: block; }
+  #qr .code { background: #fff; padding: 2vh; border-radius: 2vh; line-height: 0; }
+  #qr .code svg { width: 45vh; height: 45vh; display: block; margin: 0 auto; }
+  #qr .timer { font-variant-numeric: tabular-nums; }
   #qr h1 { font-size: 5vh; margin: 0; }
   #qr p { font-size: 2.6vh; color: var(--soft); margin: 0; }
   #message { top: 45%; font-size: 4vh; display: none; padding: 0 5vw; }
@@ -33,7 +41,17 @@
 <div id="stage">
   <video id="video" autoplay playsinline muted></video>
   <img id="shot" alt="">
-  <div id="prompt" class="overlay">Press <kbd>SPACE</kbd> to take a photo with Furhat</div>
+  <div id="prompt" class="overlay">
+    <div>
+      <h1>Take a photo with Furhat!</h1>
+      <ol>
+        <li>Stand next to Furhat so you both fit in the picture.</li>
+        <li>Press the button (or <kbd>Space</kbd>). You have 10 seconds to strike a pose.</li>
+        <li>Scan the QR code with your phone, answer a short survey, and download your photo.</li>
+      </ol>
+    </div>
+    <button class="btn" id="shoot" type="button">📸 Take a photo</button>
+  </div>
   <div id="count" class="overlay"></div>
   <div id="message" class="overlay"></div>
   <div id="flash"></div>
@@ -41,7 +59,8 @@
     <div class="code" id="qrcode"></div>
     <h1>Scan to get your photo</h1>
     <p>Answer a short survey on your phone, then download your photo.</p>
-    <p>Press SPACE when you are done</p>
+    <button class="btn" id="done" type="button">Done</button>
+    <p class="timer" id="qrtimer"></p>
   </div>
   <div id="status" title="connection to the booth orchestrator"></div>
 </div>
@@ -60,7 +79,7 @@ let qrTimer = null;
 
 function setState(next) {
   state = next;
-  $('prompt').style.display = next === 'live' ? 'block' : 'none';
+  $('prompt').style.display = next === 'live' ? 'flex' : 'none';
   $('count').style.display = next === 'countdown' ? 'block' : 'none';
   $('shot').style.display = next === 'preview' ? 'block' : 'none';
   $('qr').style.display = next === 'qr' ? 'flex' : 'none';
@@ -130,8 +149,20 @@ async function capture() {
   setTimeout(() => {
     if (state !== 'preview') return;
     setState('qr');
-    qrTimer = setTimeout(reset, QR_TIMEOUT_MS);
+    startQrTimer();
   }, PREVIEW_MS);
+}
+
+// Counts down on the QR screen so the next person knows when the booth frees up.
+function startQrTimer() {
+  let left = Math.round(QR_TIMEOUT_MS / 1000);
+  const tick = () => {
+    if (left <= 0) return reset();
+    $('qrtimer').textContent = `This screen closes in ${left} s`;
+    left -= 1;
+    qrTimer = setTimeout(tick, 1000);
+  };
+  tick();
 }
 
 function reset() {
@@ -141,15 +172,20 @@ function reset() {
   send({ type: 'reset' });
 }
 
+function requestPhoto() {
+  if (state !== 'live') return;
+  if (!ws || ws.readyState !== WebSocket.OPEN) return showError('Reconnecting to the booth…', reset);
+  send({ type: 'photo_requested' });
+}
+
+// The on-screen buttons and the Space bar do the same thing.
+$('shoot').addEventListener('click', (e) => { e.currentTarget.blur(); requestPhoto(); });
+$('done').addEventListener('click', (e) => { e.currentTarget.blur(); if (state === 'qr') reset(); });
 document.addEventListener('keydown', (e) => {
   if (e.code !== 'Space' || e.repeat) return;
   e.preventDefault();
-  if (state === 'live') {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return showError('Reconnecting to the booth…', reset);
-    send({ type: 'photo_requested' });
-  } else if (state === 'qr') {
-    reset();
-  }
+  if (state === 'live') requestPhoto();
+  else if (state === 'qr') reset();
 });
 
 setState('live');

@@ -1,5 +1,6 @@
 {
   "voice": "Danielle-Neural (en-US) - Amazon Polly",
+  "countdown_s": 10,
   "proximity": {
     "approach_distance_m": 1.5,
     "leave_distance_m": 2.0,
@@ -12,6 +13,7 @@
       "idle": {},
       "approach": {},
       "photo": {},
+      "pose": {},
       "after": {}
     },
     "inviting": {
@@ -26,15 +28,29 @@
         "gesture": "Smile"
       },
       "approach": {
-        "lines": ["Come on, don't be shy! Press the space bar to take a photo."],
+        "lines": [
+          "Come on, don't be shy! Press the button on the screen to take a photo."
+        ],
         "gesture": "BigSmile"
       },
       "photo": {
-        "lines": ["Smile!"],
-        "gesture": "BigSmile"
+        "lines": [
+          "Let's do it! Get ready to smile."
+        ],
+        "gesture": "Smile"
+      },
+      "pose": {
+        "lead_s": 3,
+        "lines": [
+          "Smile!"
+        ],
+        "gesture": "BigSmile",
+        "hold_s": 6
       },
       "after": {
-        "lines": ["Great photo! Scan the code to get it."],
+        "lines": [
+          "Great photo! Scan the code to get it."
+        ],
         "gesture": "Nod"
       }
     },
@@ -50,15 +66,29 @@
         "gesture": "BigSmile"
       },
       "approach": {
-        "lines": ["You bring such positive energy! I bet we'll take an amazing photo together! Press the space bar."],
+        "lines": [
+          "You bring such positive energy! I bet we'll take an amazing photo together! Press the button on the screen."
+        ],
         "gesture": "BigSmile"
       },
       "photo": {
-        "lines": ["You look fantastic, smile!"],
-        "gesture": "BigSmile"
+        "lines": [
+          "You look fantastic! Get ready, this is going to be a great photo."
+        ],
+        "gesture": "Smile"
+      },
+      "pose": {
+        "lead_s": 3,
+        "lines": [
+          "Big smile!"
+        ],
+        "gesture": "BigSmile",
+        "hold_s": 6
       },
       "after": {
-        "lines": ["That photo is wonderful, just like you! Scan the code to get it."],
+        "lines": [
+          "That photo is wonderful, just like you! Scan the code to get it."
+        ],
         "gesture": "BigSmile"
       }
     },
@@ -74,40 +104,30 @@
         "gesture": "Wink"
       },
       "approach": {
-        "lines": ["Let's make the silliest faces possible! Press the space bar when you're ready!"],
-        "gesture": "Surprise"
-      },
-      "photo": {
-        "lines": ["Silly faces! 3, 2, 1!"],
-        "gesture": "Surprise"
-      },
-      "after": {
-        "lines": ["Ha ha! That was hilarious! Scan the code to get it."],
-        "gesture": "BigSmile"
-      }
-    },
-    "reciprocity": {
-      "gaze": true,
-      "microexpressions": true,
-      "idle": {
-        "every_s": 20,
         "lines": [
-          "Hey! I'm learning how humans smile. Could you teach me your best smile?",
-          "Hi! Can you help me? I want to learn how humans smile."
+          "Let's make the silliest faces possible! Press the button on the screen when you're ready!"
         ],
-        "gesture": "Thoughtful"
-      },
-      "approach": {
-        "lines": ["Could you teach me your best smile? Press the space bar and show me!"],
-        "gesture": "BrowRaise"
+        "gesture": "Surprise"
       },
       "photo": {
-        "lines": ["Show me your best smile!"],
-        "gesture": "Smile"
+        "lines": [
+          "Get ready for the silliest face ever! I'll go first."
+        ],
+        "gesture": "Wink"
+      },
+      "pose": {
+        "lead_s": 4,
+        "lines": [
+          "Silly faces now!"
+        ],
+        "gesture": "Surprise",
+        "hold_s": 8
       },
       "after": {
-        "lines": ["Thank you for teaching me! Scan the code to get our photo."],
-        "gesture": "Nod"
+        "lines": [
+          "Ha ha! That was hilarious! Scan the code to get it."
+        ],
+        "gesture": "BigSmile"
       }
     }
   }

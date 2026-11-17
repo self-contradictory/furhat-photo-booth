@@ -28,22 +28,25 @@
 - Furhat makes exaggerated facial expressions for the photo.
 - Goal: Explore whether shared playful activity increases enjoyment, laughter, and positive emotions.
 
-## Social Reciprocity Furhat (Helping the Robot)
+## Social Reciprocity Furhat (Helping the Robot) (dropped)
+
+> Not run in the study. It depends on the robot reading and copying the participant's smile, and the
+> booth robot only speaks scripted lines without perceiving faces. Kept here for the report.
+
 
 - Furhat invites people to help it learn something about human expressions.
 - Example: “Hey! I’m learning how humans smile. Could you teach me your best smile?”
-- Furhat does not detect or imitate the smile (see the note below).
+- When the person smiles, Furhat imitates their expression.
 - Furhat responds: “Wow! I think I got it! Thank you for teaching me! Let’s take a picture to celebrate!”
 - Goal: Investigate whether helping a robot and experiencing social reciprocity creates stronger positive emotions and a sense of connection.
 
 ## Implementation notes
 
-- The robot does not hold a conversation. In every condition it speaks scripted lines at four moments
-  (idle, when a person comes close, when the photo is taken, after the photo). The exact lines and
-  gestures are in `booth/conditions.json`.
-- Participants start the photo themselves by pressing Space on the laptop.
-- Smile imitation in the Social Reciprocity condition was dropped: the robot asks to be taught a smile
-  and thanks the participant, but does not detect or copy their expression. This is a limitation to
-  report.
+- Four conditions are run: Passive, Inviting, Complimenting and Playful.
+- The robot does not hold a conversation. In every condition it speaks scripted lines at fixed moments
+  (idle, when a person comes close, when the countdown starts, the pose just before the shutter, after
+  the photo). The exact lines and gestures are in `booth/conditions.json`.
+- Participants start the photo themselves with the button on the laptop screen (or Space), followed by
+  a 10-second countdown. Furhat starts its photo face a few seconds before the shutter and holds it.
 - Conditions are switched by hand at the start of each break window, and every photo and survey is
   tagged with the active condition.

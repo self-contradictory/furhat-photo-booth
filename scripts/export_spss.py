@@ -22,7 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 OUT_DIR = os.path.join(ROOT, "analysis", "data")
 GROUP_FILE = os.path.join(ROOT, "analysis", "group_photos.csv")
-CONDITIONS = ["passive", "inviting", "complimenting", "playful", "reciprocity"]
+CONDITIONS = ["passive", "inviting", "complimenting", "playful"]
 
 
 def fetch_rows(local):

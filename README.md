@@ -1,7 +1,7 @@
 # Furhat Photo Booth
 
 A field study for ROBT 414. A Furhat robot stands in a busy university space next to a photo
-booth. Its behaviour follows one of five conditions (see [EXPERIMENT.md](EXPERIMENT.md)). People
+booth. Its behaviour follows one of four conditions (see [EXPERIMENT.md](EXPERIMENT.md)). People
 who take a photo scan a QR code, answer a short survey on their phone, and then download the photo.
 
 How the parts connect, and which files each team member edits: [docs/INTERFACE.md](docs/INTERFACE.md).
@@ -69,14 +69,14 @@ python orchestrator.py --check          # every line should say PASS
 python orchestrator.py --condition inviting
 ```
 
-3. Open http://localhost:8000 in Chrome and allow camera access. Press **Space** to take a photo.
+3. Open http://localhost:8000 in Chrome and allow camera access. Click **Take a photo** (or press **Space**).
 
 Terminal commands while it runs (type and press Enter):
 
 | Key | Action |
 | --- | --- |
-| `1`–`5` | Switch condition: passive, inviting, complimenting, playful, reciprocity |
-| `n` / `f` / `r` | Simulate a person near / nobody / go back to real user tracking |
+| `1`–`4` | Switch condition: passive, inviting, complimenting, playful |
+| `n` / `f` / `r` | Simulate a person arriving (press again for a new person) / nobody / back to real user tracking |
 | `s` | Status: condition, robot connection, closest person, pending uploads |
 | `q` | Quit |
 

@@ -58,6 +58,8 @@ class Robot:
         self.pending = None          # a moment waiting for the current line to finish
         self.last_idle = 0.0
         self.in_photo = False        # between photo_started and kiosk reset
+        self.pose_task = None        # scheduled photo pose during the countdown
+        self.pose_until = 0.0        # the after-photo moment waits until the pose has been held
 
     # ---- public API used by the orchestrator ------------------------------------
 
@@ -69,17 +71,29 @@ class Robot:
         self.condition = name
         self.pending = None
         self.last_idle = 0.0
+        self.near = False  # anyone already standing there counts as a new arrival in the new condition
+        self._cancel_pose()
         if self.connected:
             await self._safe(self.client.request_speak_stop())
             await self._apply_face()
             await self._look_ahead()
         self.log(f"condition -> {name}")
 
-    async def photo_started(self):
-        """The participant pressed Space: the countdown starts now."""
+    async def photo_started(self, countdown_s):
+        """The participant pressed the button: a countdown of countdown_s seconds starts now.
+
+        The photo line plays immediately. The pose (the face for the picture) starts
+        lead_s seconds before the shutter and is held for hold_s seconds, so it is
+        on Furhat's face when the frame is captured even if the kiosk lags a little.
+        """
         self.in_photo = True
         self.pending = None
         await self._say("photo", interrupt=True)
+        pose = self.behaviour.get("pose") or {}
+        if pose:
+            self._cancel_pose()
+            delay = max(0.0, countdown_s - pose.get("lead_s", 3.0))
+            self.pose_task = asyncio.create_task(self._pose_after(delay))
 
     async def photo_taken(self):
         """The photo is captured and the QR code is on screen."""
@@ -89,6 +103,8 @@ class Robot:
         """The QR screen was cleared; go back to the idle/approach behaviour."""
         self.in_photo = False
         self.last_idle = time.monotonic()
+        self.pose_until = 0.0
+        self._cancel_pose()
 
     def simulate(self, distance):
         """Operator override for testing without a real person.
@@ -96,6 +112,8 @@ class Robot:
         A distance in metres, math.inf for "nobody there", or None to use real tracking.
         """
         self.simulated = distance
+        if distance not in (None, math.inf):
+            self.near = False  # pressing `n` again simulates a new person arriving
 
     # ---- connection ---------------------------------------------------------------
 
@@ -180,6 +198,8 @@ class Robot:
         if self.speaking and now - self.speak_started < SPEAK_TIMEOUT_S:
             return
         self.speaking = False
+        if self.pending == "after" and now < self.pose_until:
+            return  # keep the photo face on until the hold time is over
         if self.pending:
             moment, self.pending = self.pending, None
             await self._say(moment)
@@ -206,6 +226,29 @@ class Robot:
             self.log(f"[{moment}] {line}")
         if gesture:
             await self._safe(self.client.request_gesture_start(gesture))
+
+    async def _pose_after(self, delay):
+        await asyncio.sleep(delay)
+        pose = self.behaviour.get("pose") or {}
+        lines = pose.get("lines") or []
+        if not self.connected:
+            return
+        if lines:
+            line = random.choice(lines)
+            self.speaking = True
+            self.speak_started = time.monotonic()
+            await self._safe(self.client.request_speak_text(line, abort=True))
+            self.log(f"[pose] {line}")
+        if pose.get("gesture"):
+            # Furhat's gesture duration is in seconds: the gesture is stretched over hold_s.
+            self.pose_until = time.monotonic() + pose.get("hold_s", 6.0)
+            await self._safe(self.client.request_gesture_start(pose["gesture"], duration=pose.get("hold_s", 6.0)))
+            self.log(f"[pose] {pose['gesture']} for {pose.get('hold_s', 6.0)} s")
+
+    def _cancel_pose(self):
+        if self.pose_task and not self.pose_task.done():
+            self.pose_task.cancel()
+        self.pose_task = None
 
     async def _apply_face(self):
         micro = self.behaviour.get("microexpressions", True)

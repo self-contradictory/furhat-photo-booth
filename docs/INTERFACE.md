@@ -24,7 +24,7 @@ The robot is driven only from the MacBook. The Worker never talks to the robot.
 
 | File | Owner | What it controls |
 | --- | --- | --- |
-| `booth/conditions.json` | robot behaviour | Lines, gestures, gaze, voice, proximity thresholds for the 5 conditions |
+| `booth/conditions.json` | robot behaviour | Lines, gestures, gaze, voice, countdown, proximity thresholds for the 4 conditions |
 | `web/src/survey.json` | survey | Survey questions, scales, answer options |
 | everything else | connection | Orchestrator, kiosk, Worker, export |
 
@@ -34,13 +34,14 @@ Redeploy the Worker (`npm run deploy` in `web/`) after editing `survey.json`, an
 
 ## conditions.json
 
-Each condition has four **moments**. Every moment is optional; an empty `{}` means silence.
+Each condition has five **moments**. Every moment is optional; an empty `{}` means silence.
 
 | Moment | When | Notes |
 | --- | --- | --- |
 | `idle` | Nobody is close, repeated every `every_s` seconds | |
 | `approach` | Once, when a person comes within `approach_distance_m` | Waits for the current line to finish |
-| `photo` | The moment someone presses Space; the 3-second countdown starts at the same time | The only moment that interrupts a line in progress |
+| `photo` | The moment someone presses the button; the countdown (`countdown_s`, 10 s) starts at the same time | Interrupts a line in progress |
+| `pose` | `lead_s` seconds before the shutter | The face for the picture. `gesture` is stretched over `hold_s` seconds, so set `hold_s` longer than `lead_s` to keep the face on through the capture |
 | `after` | The photo is taken and the QR code is shown | |
 
 Each moment takes `lines` (one is picked at random) and an optional `gesture`
@@ -57,8 +58,8 @@ flickering between states when someone stands at the edge.
 
 | Direction | Message | Meaning |
 | --- | --- | --- |
-| kiosk → orchestrator | `{"type": "photo_requested"}` | Space pressed on the live screen |
-| orchestrator → kiosk | `{"type": "countdown", "seconds": 3}` | Start the on-screen countdown (the robot's photo line starts now) |
+| kiosk → orchestrator | `{"type": "photo_requested"}` | Button (or Space) pressed on the live screen |
+| orchestrator → kiosk | `{"type": "countdown", "seconds": 10}` | Start the on-screen countdown (the robot's photo line starts now) |
 | kiosk → orchestrator | `POST /capture` (JPEG body) | Returns `{id, url, qr_svg}`; the robot says its `after` line |
 | kiosk → orchestrator | `{"type": "reset"}` | The QR screen was cleared; back to idle/approach |
 
