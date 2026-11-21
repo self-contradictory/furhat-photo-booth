@@ -112,6 +112,7 @@ Terminal commands while it runs (type and press Enter):
 | Key | Action |
 | --- | --- |
 | `1`–`4` | Switch condition: passive, inviting, complimenting, playful |
+| `a` | Teleoperation: say the approach line right now, cutting off any line in progress (use it when someone walks up) |
 | `n` / `f` / `r` | Simulate a person arriving (press again for a new person) / nobody / back to real user tracking |
 | `p` | Preview the current condition's photo face (held for `hold_s` seconds, no photo taken) |
 | `s` | Status: condition, robot connection, closest person, pending uploads |

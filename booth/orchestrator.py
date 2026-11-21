@@ -139,6 +139,7 @@ class Booth:
     def print_help(self):
         names = "  ".join(f"{i}={n}" for i, n in enumerate(self.condition_names, 1))
         print(f"\nCommands:  {names}\n"
+              "           a=approach now (say the approach line immediately, interrupting)\n"
               "           n=simulate person near  f=simulate nobody  r=real tracking\n"
               "           p=preview the photo face of the current condition\n"
               "           s=status  h=help  q=quit\n", flush=True)
@@ -148,6 +149,11 @@ class Booth:
             name = self.condition_names[int(cmd) - 1]
             await self.robot.set_condition(name)
             append_csv("conditions.csv", {"switched_at": now_iso(), "condition": name})
+        elif cmd == "a":
+            if not self.robot.connected:
+                log("robot not connected")
+            else:
+                await self.robot.approach_now()
         elif cmd == "n":
             self.robot.simulate(1.0)
             log("simulating a person arriving at 1.0 m")

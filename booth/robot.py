@@ -106,6 +106,23 @@ class Robot:
         self.pose_until = 0.0
         self._cancel_pose()
 
+    async def approach_now(self):
+        """Operator command (teleoperation): react to a person right now.
+
+        Unlike automatic detection, this cuts off any line in progress, so the
+        robot turns to the person immediately. The person then counts as near,
+        so detection does not repeat the approach line while they stay.
+        """
+        if self.in_photo:
+            self.log("photo in progress, approach skipped")
+            return
+        self.near = True
+        self.last_seen_close = time.monotonic()
+        self.pending = None
+        if self.behaviour.get("gaze"):
+            await self._safe(self.client.request_attend_user("closest"))
+        await self._say("approach", interrupt=True)
+
     def simulate(self, distance):
         """Operator override for testing without a real person.
 
