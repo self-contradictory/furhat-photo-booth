@@ -1,7 +1,8 @@
 # Furhat Photo Booth
 
 A field study for ROBT 414. A Furhat robot stands in a busy university space next to a photo
-booth. Its behaviour follows one of four conditions (see [EXPERIMENT.md](EXPERIMENT.md)). People
+booth. The design is 3 × 2: a main condition (passive, inviting, complimenting) crossed with a photo
+action (smile, silly face); see [EXPERIMENT.md](EXPERIMENT.md). People
 who take a photo scan a QR code, answer a short survey on their phone, and then download the photo.
 
 How the parts connect, and which files each team member edits: [docs/INTERFACE.md](docs/INTERFACE.md).
@@ -13,9 +14,9 @@ the web part runs locally with a local database.
 
 1. Do sections 1, 2 (*Local development* only) and 3 below.
 2. Edit your part:
-   - **Robot behaviour** → `booth/conditions.json` (lines, gestures, photo face, countdown). Restart the
-     orchestrator to load changes. Use `p` to preview a condition's photo face and `n` to make the robot
-     react as if someone walked up. See [docs/INTERFACE.md](docs/INTERFACE.md) for every field.
+   - **Robot behaviour** → `booth/conditions.json` (gaze per condition, phrase and face per photo
+     action, countdown). Restart the orchestrator to load changes. Use `m`/`y` to pick an action, `p` to
+     preview its face, and `n` to make the robot look at a simulated person. See [docs/INTERFACE.md](docs/INTERFACE.md) for every field.
    - **Survey** → `web/src/survey.json`. The local dev server reloads it by itself; open the link from a
      test photo's QR code (or http://localhost:3000/s/AAAAAAAAAA) to see it.
 3. Commit and push. Publishing survey changes to the live site needs the Cloudflare account, so tell
@@ -111,16 +112,16 @@ Terminal commands while it runs (type and press Enter):
 
 | Key | Action |
 | --- | --- |
-| `1`–`4` | Switch condition: passive, inviting, complimenting, playful |
-| `a` | Teleoperation: say the approach line right now, cutting off any line in progress (use it when someone walks up) |
-| `i` | Teleoperation: say the current condition's idle (inviting) line right now, cutting off any line in progress, and restart the 20 s idle timer |
-| `n` / `f` / `r` | Simulate a person arriving (press again for a new person) / nobody / back to real user tracking |
-| `p` | Preview the current condition's photo face (held for `hold_s` seconds, no photo taken) |
-| `s` | Status: condition, robot connection, closest person, pending uploads |
+| `1`–`3` | Switch main condition: passive, inviting, complimenting (sets gaze and micro-expressions; the invite phrases are said from Furhat Studio) |
+| `m` / `y` | Switch photo action: smile / silly face (what the robot says and does when the photo button is pressed) |
+| `n` / `f` / `r` | Simulate a person near (the robot looks at them) / nobody / back to real user tracking |
+| `p` | Preview the current action's photo face (held for `hold_s` seconds, no photo taken) |
+| `s` | Status: condition, action, robot connection, closest person, pending uploads |
 | `q` | Quit |
 
 Every photo is saved in `booth/data/photos/` before it is uploaded. `booth/data/photos.csv` and
-`booth/data/conditions.csv` are local backup logs with timestamps.
+`booth/data/conditions_v2.csv` are local backup logs with timestamps. Every photo is stored with
+`condition/action`, e.g. `inviting/silly`; the export splits it into `condition` and `action`.
 
 ## 4. Deployment-day checklist
 
@@ -147,14 +148,19 @@ Fix anything marked FAIL. The first user payload printed shows that the robot's 
 **Start (before 8:50)**
 ```bash
 caffeinate -dis &                       # stop the Mac from sleeping
-python orchestrator.py --condition <first condition>
+python orchestrator.py --condition <first condition> --action <smile|silly>
 ```
 - [ ] Chrome: open http://localhost:8000, allow the camera, enter full screen (Ctrl+Cmd+F), check the framing shows the person *and* Furhat
 - [ ] Charger plugged in; Do Not Disturb on; auto-updates paused
-- [ ] Walk up to the robot once: it should notice you (`person close` in the terminal) and speak
+- [ ] Walk up to the robot once: it should notice you (`person close` in the terminal) and look at you
+- [ ] Second laptop: open Furhat Studio at `http://<robot-ip>` and check that saying a phrase works
+- [ ] Take one test photo: the robot says the action's phrase and makes its face before the shutter
 
 **During the day**
-- At the start of each break window, type the condition number and note it on the observer sheet.
+- At the start of each block, set the main condition (`1`–`3`) and the action (`m`/`y`) on the booth
+  laptop, tell the Furhat Studio operator which phrase to use, and note both on the observer sheet.
+  The booth records only what the booth laptop is set to, so keep the two laptops in step.
+- Invite phrases are said by hand from Furhat Studio. The booth never speaks on its own.
 - If the terminal shows `UPLOADS FAILING`, switch the Mac's Wi-Fi to the phone hotspot. Photos are
   kept locally and upload by themselves when the connection returns.
 - If the robot disconnects, the orchestrator reconnects every 5 s; the kiosk keeps working.

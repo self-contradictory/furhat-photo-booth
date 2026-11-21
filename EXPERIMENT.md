@@ -1,5 +1,28 @@
 # Experiment Design
 
+## Final design (3 × 2)
+
+Six cases: a **main condition** crossed with a **photo action**.
+
+| Main condition | What the robot does before the photo |
+| --- | --- |
+| Passive | No speech, neutral face, does not look at people |
+| Inviting | “Hi there! Let's take a photo together!” |
+| Inviting with compliment | “Hi there! I love your style! Let's take a photo together!” |
+
+| Photo action | When the participant presses the photo button |
+| --- | --- |
+| Smile | Furhat says “Let's smile!” and smiles for the photo |
+| Silly face | Furhat says “Let's make silly faces!” and makes a silly face for the photo |
+
+- The main condition tests how likely people are to approach the robot (observer tally).
+- The photo action tests how a plain versus a playful interaction changes how people rate it (survey).
+- The invite phrases are said by hand from Furhat Studio on a second laptop. The booth laptop records
+  which main condition and action are running, and every photo and survey is tagged with both.
+- There are no automatic or repeating phrases.
+
+The sections below are the original four-condition plan. Playful became the silly-face action.
+
 ## Passive Furhat (Baseline Condition)
 
 - Furhat stays still with a neutral expression.
@@ -42,11 +65,12 @@
 
 ## Implementation notes
 
-- Four conditions are run: Passive, Inviting, Complimenting and Playful.
-- The robot does not hold a conversation. In every condition it speaks scripted lines at fixed moments
-  (idle, when a person comes close, when the countdown starts, the pose just before the shutter, after
-  the photo). The exact lines and gestures are in `booth/conditions.json`.
+- The design is 3 × 2 (see *Final design* above).
+- The robot does not hold a conversation. Invite phrases come from Furhat Studio. The robot looks at
+  people who come close (not in Passive), but detection never makes it speak. When someone presses the
+  photo button it says the action's phrase and holds the action's face for the shutter. The exact lines
+  and faces are in `booth/conditions.json`.
 - Participants start the photo themselves with the button on the laptop screen (or Space), followed by
   a 10-second countdown. Furhat starts its photo face a few seconds before the shutter and holds it.
-- Conditions are switched by hand at the start of each break window, and every photo and survey is
-  tagged with the active condition.
+- The main condition and action are switched by hand from the booth laptop, and every photo and survey
+  is tagged with both.

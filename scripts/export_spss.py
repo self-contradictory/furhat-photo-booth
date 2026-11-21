@@ -22,7 +22,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 OUT_DIR = os.path.join(ROOT, "analysis", "data")
 GROUP_FILE = os.path.join(ROOT, "analysis", "group_photos.csv")
-CONDITIONS = ["passive", "inviting", "complimenting", "playful"]
+CONDITIONS = ["passive", "inviting", "complimenting"]
+ACTIONS = ["smile", "silly"]
 
 
 def fetch_rows(local):
@@ -47,9 +48,12 @@ def main():
         if r["condition"] == "check":  # left over from a failed --check run
             continue
         answers = json.loads(r["answers"]) if r["answers"] else {}
+        # The booth stores "condition/action", e.g. "inviting/silly".
+        condition, _, action = r["condition"].partition("/")
         row = {
             "id": r["id"],
-            "condition": CONDITIONS.index(r["condition"]) + 1 if r["condition"] in CONDITIONS else None,
+            "condition": CONDITIONS.index(condition) + 1 if condition in CONDITIONS else None,
+            "action": ACTIONS.index(action) + 1 if action in ACTIONS else None,
             "captured_at": r["captured_at"] or "",
             "submitted": 1 if r["submitted_at"] else 0,
             "has_photo": 1 if r["photo_key"] else 0,
@@ -74,9 +78,11 @@ def main():
     for group, cols in scales.items():
         df[f"{group}_score"] = pd.concat(cols, axis=1).mean(axis=1, skipna=False)
 
-    labels = {"condition": "Robot behaviour condition", "group_photo": "More than one person in the photo",
+    labels = {"condition": "Main condition (behaviour before the photo)",
+              "action": "Photo action (what the robot did during the countdown)", "group_photo": "More than one person in the photo",
               "submitted": "Survey submitted", "has_photo": "Photo uploaded"}
     value_labels = {"condition": {i + 1: c for i, c in enumerate(CONDITIONS)},
+                    "action": {i + 1: a for i, a in enumerate(ACTIONS)},
                     "group_photo": {0: "single", 1: "group"}}
     for item in items:
         labels[item["id"]] = item.get("text") or f"{item['minLabel']} - {item['maxLabel']}"

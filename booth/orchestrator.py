@@ -4,7 +4,7 @@ One process on the MacBook that ties everything together:
   - serves the kiosk page at http://localhost:8000 and talks to it over a WebSocket
   - drives Furhat through the Realtime API (robot.py, scripted by conditions.json)
   - saves each photo locally and uploads it to the Cloudflare Worker (uploader.py)
-  - takes operator commands from the terminal (switch condition, simulate a person)
+  - takes operator commands from the terminal (switch condition and action, simulate a person)
 
 Run:   python orchestrator.py                # normal operation
        python orchestrator.py --check        # pre-flight check before deployment
@@ -74,6 +74,8 @@ class Booth:
     def __init__(self, args, conditions):
         self.args = args
         self.condition_names = list(conditions["conditions"])
+        self.action_names = list(conditions["actions"])
+        self.shot = None  # "condition/action" fixed when the button is pressed
         self.countdown_s = conditions.get("countdown_s", 10)
         self.robot = Robot(args.furhat_host, conditions, log)
         self.uploader = Uploader(os.path.join(DATA_DIR, "photos"), args.worker_url, args.secret, log)
@@ -100,7 +102,9 @@ class Booth:
         kind = event.get("type")
         if kind == "photo_requested" and not self.busy:
             self.busy = True
-            log("photo requested")
+            # Fixed now, so switching during the countdown cannot mislabel this photo.
+            self.shot = f"{self.robot.condition}/{self.robot.action}"
+            log(f"photo requested ({self.shot})")
             await self.broadcast({"type": "countdown", "seconds": self.countdown_s})
             await self.robot.photo_started(self.countdown_s)
         elif kind == "reset":
@@ -118,7 +122,8 @@ class Booth:
         jpeg = await request.read()
         session_id = new_session_id()
         captured_at = now_iso()
-        condition = self.robot.condition
+        # Stored as "condition/action", e.g. "inviting/silly"; the export splits it in two.
+        condition = self.shot or f"{self.robot.condition}/{self.robot.action}"
         self.uploader.save(session_id, jpeg, condition, captured_at)
         append_csv("photos.csv", {"id": session_id, "condition": condition, "captured_at": captured_at})
 
@@ -126,7 +131,6 @@ class Booth:
         # omitsize keeps the viewBox, so the kiosk's CSS can scale the code without shifting it
         qr_svg = segno.make(url, error="m").svg_inline(border=2, omitsize=True)
         log(f"photo {session_id} taken ({condition})  survey: {url}")
-        await self.robot.photo_taken()
         return web.json_response({"id": session_id, "url": url, "qr_svg": qr_svg})
 
     async def index_handler(self, _request):
@@ -138,28 +142,20 @@ class Booth:
 
     def print_help(self):
         names = "  ".join(f"{i}={n}" for i, n in enumerate(self.condition_names, 1))
-        print(f"\nCommands:  {names}\n"
-              "           a=approach now (say the approach line immediately, interrupting)\n"
-              "           i=idle now (say the idle line immediately, interrupting)\n"
+        print(f"\nCommands:  main condition: {names}\n"
+              "           action at the photo button: m=smile  y=silly\n"
               "           n=simulate person near  f=simulate nobody  r=real tracking\n"
-              "           p=preview the photo face of the current condition\n"
+              "           p=preview the face of the current action\n"
               "           s=status  h=help  q=quit\n", flush=True)
 
     async def on_command(self, cmd):
         if cmd.isdigit() and 1 <= int(cmd) <= len(self.condition_names):
             name = self.condition_names[int(cmd) - 1]
             await self.robot.set_condition(name)
-            append_csv("conditions.csv", {"switched_at": now_iso(), "condition": name})
-        elif cmd == "a":
-            if not self.robot.connected:
-                log("robot not connected")
-            else:
-                await self.robot.approach_now()
-        elif cmd == "i":
-            if not self.robot.connected:
-                log("robot not connected")
-            else:
-                await self.robot.idle_now()
+            self.log_switch()
+        elif cmd in ("m", "smile", "y", "silly"):
+            self.robot.set_action("smile" if cmd in ("m", "smile") else "silly")
+            self.log_switch()
         elif cmd == "n":
             self.robot.simulate(1.0)
             log("simulating a person arriving at 1.0 m")
@@ -170,19 +166,22 @@ class Booth:
             self.robot.simulate(None)
             log("using real user tracking")
         elif cmd == "p":
-            if (self.robot.behaviour.get("pose") or {}).get("face"):
-                log(f"previewing the {self.robot.condition} photo face")
-                self.robot.preview_pose()
-            else:
-                log(f"{self.robot.condition} has no photo face")
+            log(f"previewing the {self.robot.action} face")
+            self.robot.preview_pose()
         elif cmd == "s":
-            log(f"condition={self.robot.condition}  robot={'connected' if self.robot.connected else 'DISCONNECTED'}"
+            log(f"condition={self.robot.condition}  action={self.robot.action}"
+                f"  robot={'connected' if self.robot.connected else 'DISCONNECTED'}"
                 f"  near={self.robot.near}  closest={self.robot.closest}  kiosks={len(self.kiosks)}"
                 f"  pending_uploads={len(self.uploader.pending())}")
         elif cmd == "q":
             return False
         elif cmd:
             self.print_help()
+
+    def log_switch(self):
+        # conditions_v2.csv: the 3 x 2 design has an action column the old conditions.csv lacks
+        append_csv("conditions_v2.csv", {"switched_at": now_iso(), "condition": self.robot.condition,
+                                         "action": self.robot.action})
 
     async def read_terminal(self):
         # A daemon thread reads stdin so a blocked readline never stops Ctrl+C from exiting.
@@ -208,8 +207,9 @@ class Booth:
         await runner.setup()
         await web.TCPSite(runner, "localhost", self.args.port).start()
 
+        self.robot.set_action(self.args.action or self.action_names[0])
         await self.robot.set_condition(self.args.condition or self.condition_names[0])
-        append_csv("conditions.csv", {"switched_at": now_iso(), "condition": self.robot.condition})
+        self.log_switch()
         log(f"kiosk at http://localhost:{self.args.port}  worker {self.args.worker_url}")
         self.print_help()
         # Runs until the operator types q; the robot and uploader loops never end on their own.
@@ -315,7 +315,8 @@ def main():
     conditions = load_conditions(os.path.join(HERE, "conditions.json"))
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="run the pre-flight check and exit")
-    parser.add_argument("--condition", choices=list(conditions["conditions"]), help="condition to start in")
+    parser.add_argument("--condition", choices=list(conditions["conditions"]), help="main condition to start in")
+    parser.add_argument("--action", choices=list(conditions["actions"]), help="photo action to start with")
     parser.add_argument("--port", type=int, default=8000, help="kiosk port (default 8000)")
     parser.add_argument("--furhat-host", default=os.environ.get("FURHAT_HOST", "127.0.0.1"))
     parser.add_argument("--worker-url", default=os.environ.get("WORKER_URL", "http://localhost:3000"))

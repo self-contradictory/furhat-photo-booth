@@ -9,140 +9,43 @@
   "conditions": {
     "passive": {
       "gaze": false,
-      "microexpressions": false,
-      "idle": {},
-      "approach": {},
-      "photo": {},
-      "pose": {},
-      "after": {}
+      "microexpressions": false
     },
     "inviting": {
       "gaze": true,
-      "microexpressions": true,
-      "idle": {
-        "every_s": 20,
-        "lines": [
-          "Hey there! Would you like to take a photo with me? Come on, let's do it!",
-          "Hi! Want a photo with a robot? Come over here!"
-        ],
-        "gesture": "Smile"
-      },
-      "approach": {
-        "lines": [
-          "Come on, don't be shy! Press the button on the screen to take a photo."
-        ],
-        "gesture": "BigSmile"
-      },
-      "photo": {
-        "lines": [
-          "Let's do it! Get ready to smile."
-        ],
-        "gesture": "Smile"
-      },
-      "pose": {
-        "lead_s": 3,
-        "hold_s": 6,
-        "lines": [
-          "Smile!"
-        ],
-        "face": {
-          "SMILE_OPEN": 0.8,
-          "SMILE_CLOSED": 0.3,
-          "EYE_SQUINT_LEFT": 0.2,
-          "EYE_SQUINT_RIGHT": 0.2
-        }
-      },
-      "after": {
-        "lines": [
-          "Great photo! Scan the code to get it."
-        ],
-        "gesture": "Nod"
-      }
+      "microexpressions": true
     },
     "complimenting": {
       "gaze": true,
-      "microexpressions": true,
-      "idle": {
-        "every_s": 20,
-        "lines": [
-          "Hey! You look like someone with great energy! Want to take a photo with me?",
-          "Hi there! You all look amazing today. Come take a photo with me!"
-        ],
-        "gesture": "BigSmile"
-      },
-      "approach": {
-        "lines": [
-          "You bring such positive energy! I bet we'll take an amazing photo together! Press the button on the screen."
-        ],
-        "gesture": "BigSmile"
-      },
-      "photo": {
-        "lines": [
-          "You look fantastic! Get ready, this is going to be a great photo."
-        ],
-        "gesture": "Smile"
-      },
-      "pose": {
-        "lead_s": 3,
-        "hold_s": 6,
-        "lines": [
-          "Big smile!"
-        ],
-        "face": {
-          "SMILE_OPEN": 1.0,
-          "BROW_UP_LEFT": 0.5,
-          "BROW_UP_RIGHT": 0.5
-        }
-      },
-      "after": {
-        "lines": [
-          "That photo is wonderful, just like you! Scan the code to get it."
-        ],
-        "gesture": "BigSmile"
+      "microexpressions": true
+    }
+  },
+  "actions": {
+    "smile": {
+      "lines": [
+        "Let's smile!"
+      ],
+      "lead_s": 3,
+      "hold_s": 6,
+      "face": {
+        "SMILE_OPEN": 0.8,
+        "SMILE_CLOSED": 0.3,
+        "EYE_SQUINT_LEFT": 0.2,
+        "EYE_SQUINT_RIGHT": 0.2
       }
     },
-    "playful": {
-      "gaze": true,
-      "microexpressions": true,
-      "idle": {
-        "every_s": 20,
-        "lines": [
-          "Hey! Want to try something funny? Let's make the silliest faces possible!",
-          "Psst! I bet I can make a sillier face than you. Come and try!"
-        ],
-        "gesture": "Wink"
-      },
-      "approach": {
-        "lines": [
-          "Let's make the silliest faces possible! Press the button on the screen when you're ready!"
-        ],
-        "gesture": "Surprise"
-      },
-      "photo": {
-        "lines": [
-          "Get ready for the silliest face ever! I'll go first."
-        ],
-        "gesture": "Wink"
-      },
-      "pose": {
-        "lead_s": 4,
-        "hold_s": 8,
-        "lines": [
-          "Silly faces now!"
-        ],
-        "face": {
-          "JAW_OPEN": 0.6,
-          "TONGUE_OUT": 1.0,
-          "BROW_UP_LEFT": 1.0,
-          "EYE_SQUINT_RIGHT": 1.0,
-          "MOUTH_LEFT": 0.5
-        }
-      },
-      "after": {
-        "lines": [
-          "Ha ha! That was hilarious! Scan the code to get it."
-        ],
-        "gesture": "BigSmile"
+    "silly": {
+      "lines": [
+        "Let's make silly faces!"
+      ],
+      "lead_s": 4,
+      "hold_s": 8,
+      "face": {
+        "JAW_OPEN": 0.6,
+        "TONGUE_OUT": 1.0,
+        "BROW_UP_LEFT": 1.0,
+        "EYE_SQUINT_RIGHT": 1.0,
+        "MOUTH_LEFT": 0.5
       }
     }
   }

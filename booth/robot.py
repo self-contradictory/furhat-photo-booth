@@ -1,8 +1,13 @@
 """Furhat behaviour for the photo booth.
 
-The robot never converses. It speaks scripted lines from conditions.json at four
-moments (idle, approach, photo, after) and optionally looks at the closest person.
-All the content lives in conditions.json; this file only decides *when* to speak.
+The design is 3 x 2:
+  - the main condition (passive, inviting, complimenting) sets gaze and micro-expressions.
+    Its invite phrase is said by hand from Furhat Studio on a second laptop, not from here;
+    the booth only records which condition is running.
+  - the action (smile, silly) is what the robot does when someone presses the photo button:
+    it says the action's phrase and holds the action's face for the shutter.
+Person detection only turns the robot's gaze; it never makes the robot speak.
+All the content lives in conditions.json; this file only decides *when*.
 """
 import asyncio
 import json
@@ -12,8 +17,7 @@ import time
 
 from furhat_realtime_api import AsyncFurhatClient
 
-TICK_S = 0.25  # how often the behaviour loop re-evaluates the situation
-SPEAK_TIMEOUT_S = 30.0  # treat a line as finished if speak.end never arrives
+TICK_S = 0.25  # how often the gaze loop re-evaluates the situation
 RECONNECT_S = 5.0
 
 
@@ -28,7 +32,7 @@ def user_distance(user):
 
     Furhat reports positions in metres with z pointing forward from the robot.
     The exact field names are read defensively so a firmware difference only
-    disables proximity instead of crashing the booth.
+    disables gaze instead of crashing the booth.
     """
     loc = user.get("location") or user.get("position") or user.get("head") or {}
     if isinstance(loc, dict) and "z" in loc:
@@ -44,22 +48,16 @@ class Robot:
         self.client = None
         self.connected = False
         self.condition = next(iter(conditions["conditions"]))
+        self.action = next(iter(conditions["actions"]))
 
-        # Proximity state
+        # Proximity state (drives gaze only)
         self.near = False
         self.closest = None          # metres to the closest tracked user, None if nobody
         self.last_seen_close = 0.0   # last time someone was within leave_distance_m
         self.simulated = None        # operator override from the terminal: metres or None
         self.first_users_payload_logged = False
 
-        # Speech state
-        self.speaking = False
-        self.speak_started = 0.0
-        self.pending = None          # a moment waiting for the current line to finish
-        self.last_idle = 0.0
-        self.in_photo = False        # between photo_started and kiosk reset
-        self.pose_task = None        # scheduled photo pose during the countdown
-        self.pose_until = 0.0        # the after-photo moment waits until the pose has been held
+        self.pose_task = None        # scheduled photo face during the countdown
 
     # ---- public API used by the orchestrator ------------------------------------
 
@@ -67,79 +65,39 @@ class Robot:
     def behaviour(self):
         return self.cfg["conditions"][self.condition]
 
+    @property
+    def action_spec(self):
+        return self.cfg["actions"][self.action]
+
     async def set_condition(self, name):
         self.condition = name
-        self.pending = None
-        self.last_idle = 0.0
-        self.near = False  # anyone already standing there counts as a new arrival in the new condition
+        self.near = False  # re-evaluate gaze for anyone already standing there
         self._cancel_pose()
         if self.connected:
-            await self._safe(self.client.request_speak_stop())
             await self._apply_face()
             await self._look_ahead()
         self.log(f"condition -> {name}")
 
+    def set_action(self, name):
+        self.action = name
+        self.log(f"action -> {name}")
+
     async def photo_started(self, countdown_s):
         """The participant pressed the button: a countdown of countdown_s seconds starts now.
 
-        The photo line plays immediately. The pose (the face for the picture) starts
-        lead_s seconds before the shutter and is held for hold_s seconds, so it is
-        on Furhat's face when the frame is captured even if the kiosk lags a little.
+        The action's phrase plays immediately. Its face starts lead_s seconds before the
+        shutter and is held for hold_s seconds, so it is on Furhat's face when the frame
+        is captured even if the kiosk lags a little.
         """
-        self.in_photo = True
-        self.pending = None
-        await self._say("photo", interrupt=True)
-        pose = self.behaviour.get("pose") or {}
-        if pose:
-            self._cancel_pose()
-            delay = max(0.0, countdown_s - pose.get("lead_s", 3.0))
-            self.pose_task = asyncio.create_task(self._pose_after(delay))
-
-    async def photo_taken(self):
-        """The photo is captured and the QR code is on screen."""
-        self.pending = "after"
+        spec = self.action_spec
+        await self._say(spec)
+        self._cancel_pose()
+        delay = max(0.0, countdown_s - spec.get("lead_s", 3.0))
+        self.pose_task = asyncio.create_task(self._pose_after(delay))
 
     def kiosk_reset(self):
-        """The QR screen was cleared; go back to the idle/approach behaviour."""
-        self.in_photo = False
-        self.last_idle = time.monotonic()
-        self.pose_until = 0.0
+        """The QR screen was cleared; the booth is ready for the next person."""
         self._cancel_pose()
-
-    async def approach_now(self):
-        """Operator command (teleoperation): react to a person right now.
-
-        Unlike automatic detection, this cuts off any line in progress, so the
-        robot turns to the person immediately. The person then counts as near,
-        so detection does not repeat the approach line while they stay.
-        """
-        if self.in_photo:
-            self.log("photo in progress, approach skipped")
-            return
-        self.near = True
-        self.last_seen_close = time.monotonic()
-        self.pending = None
-        if self.behaviour.get("gaze"):
-            await self._safe(self.client.request_attend_user("closest"))
-        await self._say("approach", interrupt=True)
-
-    async def idle_now(self):
-        """Operator command (teleoperation): say the current condition's idle line right now.
-
-        Cuts off any line in progress, treats the area as empty again, and
-        restarts the idle timer, so the next automatic idle line is every_s later.
-        """
-        if self.in_photo:
-            self.log("photo in progress, idle line skipped")
-            return
-        if not (self.behaviour.get("idle") or {}).get("lines"):
-            self.log(f"{self.condition} has no idle line")
-            return
-        self.near = False
-        self.pending = None
-        self.last_idle = time.monotonic()
-        await self._look_ahead()
-        await self._say("idle", interrupt=True)
 
     def simulate(self, distance):
         """Operator override for testing without a real person.
@@ -148,12 +106,17 @@ class Robot:
         """
         self.simulated = distance
         if distance not in (None, math.inf):
-            self.near = False  # pressing `n` again simulates a new person arriving
+            self.near = False  # pressing `n` again makes the robot turn to the "new" person
+
+    def preview_pose(self):
+        """Operator command: show the current action's face now, without a photo."""
+        self._cancel_pose()
+        self.pose_task = asyncio.create_task(self._pose_after(0.0))
 
     # ---- connection ---------------------------------------------------------------
 
     async def run(self):
-        """Connect and keep the behaviour loop running, reconnecting if the robot drops."""
+        """Connect and keep the gaze loop running, reconnecting if the robot drops."""
         while True:
             try:
                 self.client = AsyncFurhatClient(self.host)
@@ -171,13 +134,10 @@ class Robot:
             except Exception as e:  # keep the kiosk alive whatever the robot does
                 self.log(f"robot error: {e!r}")
             self.connected = False
-            self.speaking = False
             await asyncio.sleep(RECONNECT_S)
 
     async def _setup(self):
         c = self.client
-        c.add_handler("response.speak.start", self._on_speak_start)
-        c.add_handler("response.speak.end", self._on_speak_end)
         c.add_handler("response.users.data", self._on_users)
         voice = self.cfg.get("voice")
         if voice:
@@ -188,12 +148,6 @@ class Robot:
 
     # ---- event handlers -----------------------------------------------------------
 
-    async def _on_speak_start(self, _event):
-        self.speaking = True
-
-    async def _on_speak_end(self, _event):
-        self.speaking = False
-
     async def _on_users(self, event):
         users = event.get("users") or []
         if users and not self.first_users_payload_logged:
@@ -203,7 +157,7 @@ class Robot:
         distances = [d for d in (user_distance(u) for u in users) if d is not None]
         self.closest = min(distances) if distances else None
 
-    # ---- behaviour loop -------------------------------------------------------------
+    # ---- gaze loop ------------------------------------------------------------------
 
     async def _tick(self):
         now = time.monotonic()
@@ -220,84 +174,43 @@ class Robot:
             self.log(f"person close ({closest:.1f} m)")
             if self.behaviour.get("gaze"):
                 await self._safe(self.client.request_attend_user("closest"))
-            if not self.in_photo:
-                self.pending = "approach"
         elif self.near and now - self.last_seen_close >= prox["leave_after_s"]:
             self.near = False
             self.log("person left")
             await self._look_ahead()
-            if self.pending == "approach":
-                self.pending = None
-            self.last_idle = now  # start a fresh idle interval instead of speaking immediately
-
-        if self.speaking and now - self.speak_started < SPEAK_TIMEOUT_S:
-            return
-        self.speaking = False
-        if self.pending == "after" and now < self.pose_until:
-            return  # keep the photo face on until the hold time is over
-        if self.pending:
-            moment, self.pending = self.pending, None
-            await self._say(moment)
-            return
-        idle = self.behaviour.get("idle") or {}
-        every = idle.get("every_s")
-        if not self.near and not self.in_photo and every and now - self.last_idle >= every:
-            self.last_idle = now
-            await self._say("idle")
 
     # ---- helpers ----------------------------------------------------------------------
 
-    async def _say(self, moment, interrupt=False):
-        spec = self.behaviour.get(moment) or {}
+    async def _say(self, spec):
         lines = spec.get("lines") or []
-        gesture = spec.get("gesture")
-        if not self.connected or (not lines and not gesture):
+        if not self.connected:
             return
         if lines:
             line = random.choice(lines)
-            self.speaking = True  # set now; speak.start arrives a moment later
-            self.speak_started = time.monotonic()
-            await self._safe(self.client.request_speak_text(line, abort=interrupt))
-            self.log(f"[{moment}] {line}")
-        if gesture:
-            await self._safe(self.client.request_gesture_start(gesture))
+            await self._safe(self.client.request_speak_text(line, abort=True))
+            self.log(f"[{self.action}] {line}")
+        if spec.get("gesture"):
+            await self._safe(self.client.request_gesture_start(spec["gesture"]))
 
-    async def _pose_after(self, delay, speak=True):
-        """Put on the photo face and hold it for hold_s seconds, then release it.
+    async def _pose_after(self, delay):
+        """Put on the action's face and hold it for hold_s seconds, then release it.
 
         Gestures animate in and straight back out, so the held face is built from
         face parameters instead: once set, they stay until they are set back to 0.
         """
         await asyncio.sleep(delay)
-        pose = self.behaviour.get("pose") or {}
-        lines = pose.get("lines") or []
-        face = pose.get("face") or {}
-        hold_s = pose.get("hold_s", 6.0)
-        if not self.connected:
+        spec = self.action_spec
+        face = spec.get("face") or {}
+        hold_s = spec.get("hold_s", 6.0)
+        if not self.connected or not face:
             return
-        if lines and speak:
-            line = random.choice(lines)
-            self.speaking = True
-            self.speak_started = time.monotonic()
-            await self._safe(self.client.request_speak_text(line, abort=True))
-            self.log(f"[pose] {line}")
-        if pose.get("gesture"):
-            await self._safe(self.client.request_gesture_start(pose["gesture"]))
-        if not face:
-            return
-        self.pose_until = time.monotonic() + hold_s
         await self._safe(self.client.request_face_params(face))
-        self.log(f"[pose] holding face for {hold_s} s: {face}")
+        self.log(f"[{self.action}] holding face for {hold_s} s: {face}")
         try:
             await asyncio.sleep(hold_s)
         finally:
             # Also runs when the pose is cancelled (condition switch), so the face never stays stuck.
             await self._safe(self.client.request_face_params({name: 0.0 for name in face}))
-
-    def preview_pose(self):
-        """Operator command: show the current condition's photo face now, without a photo."""
-        self._cancel_pose()
-        self.pose_task = asyncio.create_task(self._pose_after(0.0, speak=False))
 
     def _cancel_pose(self):
         if self.pose_task and not self.pose_task.done():
