@@ -123,6 +123,24 @@ class Robot:
             await self._safe(self.client.request_attend_user("closest"))
         await self._say("approach", interrupt=True)
 
+    async def idle_now(self):
+        """Operator command (teleoperation): say the current condition's idle line right now.
+
+        Cuts off any line in progress, treats the area as empty again, and
+        restarts the idle timer, so the next automatic idle line is every_s later.
+        """
+        if self.in_photo:
+            self.log("photo in progress, idle line skipped")
+            return
+        if not (self.behaviour.get("idle") or {}).get("lines"):
+            self.log(f"{self.condition} has no idle line")
+            return
+        self.near = False
+        self.pending = None
+        self.last_idle = time.monotonic()
+        await self._look_ahead()
+        await self._say("idle", interrupt=True)
+
     def simulate(self, distance):
         """Operator override for testing without a real person.
 

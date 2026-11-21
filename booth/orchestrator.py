@@ -140,6 +140,7 @@ class Booth:
         names = "  ".join(f"{i}={n}" for i, n in enumerate(self.condition_names, 1))
         print(f"\nCommands:  {names}\n"
               "           a=approach now (say the approach line immediately, interrupting)\n"
+              "           i=idle now (say the idle line immediately, interrupting)\n"
               "           n=simulate person near  f=simulate nobody  r=real tracking\n"
               "           p=preview the photo face of the current condition\n"
               "           s=status  h=help  q=quit\n", flush=True)
@@ -154,6 +155,11 @@ class Booth:
                 log("robot not connected")
             else:
                 await self.robot.approach_now()
+        elif cmd == "i":
+            if not self.robot.connected:
+                log("robot not connected")
+            else:
+                await self.robot.idle_now()
         elif cmd == "n":
             self.robot.simulate(1.0)
             log("simulating a person arriving at 1.0 m")
